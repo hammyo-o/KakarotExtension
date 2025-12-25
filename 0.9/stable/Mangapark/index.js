@@ -17799,7 +17799,7 @@ var source = (() => {
       $2('script[type="qwik/json"]').each((_, script) => {
         const scriptContent = $2(script).text();
         if (scriptContent) {
-          const urlRegex = /https?:\/\/[^"'()\s]*\.org\/media\/[^\s"'()]+/g;
+          const urlRegex = /https?:\/\/[^"'()\s]+\/media\/[^\s"'()]+/g;
           const matches = scriptContent.match(urlRegex);
           if (matches) {
             pages.push(...matches);
