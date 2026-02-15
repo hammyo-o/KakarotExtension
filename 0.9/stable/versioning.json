@@ -1,8 +1,8 @@
 {
-  "buildTime": "2025-12-25T09:09:45.597Z",
+  "buildTime": "2026-02-15T18:10:38.605Z",
   "builtWith": {
-    "toolchain": "1.0.0-alpha.52",
-    "types": "1.0.0-alpha.52"
+    "toolchain": "1.0.0-alpha.57",
+    "types": "1.0.0-alpha.57"
   },
   "repository": {
     "name": "KakarotExtension",
@@ -35,7 +35,7 @@
     {
       "name": "Batcave",
       "description": "Extension that pulls content from batcave.biz.",
-      "version": "1.2",
+      "version": "1.3",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
@@ -58,9 +58,9 @@
       ],
       "capabilities": [
         4,
-        16,
         64,
-        1
+        1,
+        16
       ],
       "developers": [
         {
@@ -72,7 +72,7 @@
     {
       "name": "Elftoon",
       "description": "Extension that pulls content from elftoon.com (Cloudflare protected).",
-      "version": "1.0.0-alpha.2",
+      "version": "1.0.0-alpha.3",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
@@ -100,8 +100,7 @@
       "capabilities": [
         4,
         64,
-        1,
-        32
+        1
       ],
       "badges": [],
       "developers": [
@@ -138,7 +137,7 @@
     {
       "name": "Mangaball",
       "description": "Extension that pulls content from mangaball.net.",
-      "version": "1.0.0-alpha.1",
+      "version": "1.0.0-alpha.2",
       "icon": "icon.png",
       "language": "multi",
       "contentRating": "ADULT",
@@ -208,7 +207,7 @@
     {
       "name": "Mangapark",
       "description": "Extension that pulls content from mangapark.net.",
-      "version": "1.0.0-alpha.6",
+      "version": "1.0.0-alpha.7",
       "icon": "icon.png",
       "language": "multi",
       "contentRating": "SAFE",
