@@ -1,0 +1,52 @@
+diff --git a/node_modules/@paperback/toolchain/lib/commands/bundle.js b/node_modules/@paperback/toolchain/lib/commands/bundle.js
+<<<<<<<< HEAD:patches/@paperback+toolchain+1.0.0-alpha.64.patch
+index 63f82ad..07401cf 100644
+========
+index 63f82ad..b09a368 100644
+>>>>>>>> nhentai-recover:patches/@paperback+toolchain+1.0.0-alpha.64+001+initial.patch
+--- a/node_modules/@paperback/toolchain/lib/commands/bundle.js
++++ b/node_modules/@paperback/toolchain/lib/commands/bundle.js
+@@ -3,6 +3,7 @@ import { Listr, color } from 'listr2';
+ import esbuild from 'esbuild';
+ import fs from 'fs-extra';
+ import path from 'path';
++import { pathToFileURL } from 'url';
+ export default class Bundle extends Command {
+     static description = 'Builds all the sources in the repository and generates a versioning file';
+     static flags = {
+<<<<<<<< HEAD:patches/@paperback+toolchain+1.0.0-alpha.64.patch
+@@ -145,16 +146,16 @@ export async function runTests() {
+========
+@@ -145,10 +146,10 @@ export async function runTests() {
+>>>>>>>> nhentai-recover:patches/@paperback+toolchain+1.0.0-alpha.64+001+initial.patch
+         const cliInfo = await import('../../package.json', {
+             with: { type: 'json' },
+         });
+-        const commonsInfo = await import(path.join(basePath, 'node_modules/@paperback/types/package.json'), { with: { type: 'json' } });
++        const commonsInfo = await import(pathToFileURL(path.join(basePath, 'node_modules/@paperback/types/package.json')).href, { with: { type: 'json' } });
+         let projectInfo;
+         try {
+-            projectInfo = await import(path.join(basePath, 'package.json'), {
++            projectInfo = await import(pathToFileURL(path.join(basePath, 'package.json')).href, {
+                 with: { type: 'json' },
+             });
+         }
+<<<<<<<< HEAD:patches/@paperback+toolchain+1.0.0-alpha.64.patch
+         catch {
+             try {
+-                projectInfo = await import(path.join(basePath, 'deno.json'), {
++                projectInfo = await import(pathToFileURL(path.join(basePath, 'deno.json')).href, {
+                     with: { type: 'json' },
+                 });
+             }
+========
+>>>>>>>> nhentai-recover:patches/@paperback+toolchain+1.0.0-alpha.64+001+initial.patch
+@@ -180,7 +181,7 @@ export async function runTests() {
+             const directoryContainsExtensionDefinition = fs.existsSync(infoJsonPath);
+             if (!directoryContainsExtensionDefinition)
+                 continue;
+-            const infoModule = await import(`file://${infoJsonPath}`, {
++            const infoModule = await import(pathToFileURL(infoJsonPath).href, {
+                 with: { type: 'json' },
+             });
+             jsonObject.sources.push(infoModule.default);

@@ -55,15 +55,8 @@ function formatNumber(n: number): string {
   return n.toString();
 }
 
-/** Parse stored date strings, handling YYYY-MM-DD as local time. */
-function parseStoredDate(value: string): Date {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value)
-    ? parseLocalDateKey(value)
-    : new Date(value);
-}
-
 function formatDate(isoDate: string): string {
-  const d = parseStoredDate(isoDate);
+  const d = new Date(isoDate);
   return formatDateByPattern(d, getDateFormatSetting(), getDateSeparatorSetting());
 }
 
@@ -217,7 +210,7 @@ function getStreak(sessions: ReadingSession[], graceDays: number = 0): {
 // -- Statistics (main form) --
 
 export class StatisticsForm extends Form {
-  private resetStep = 0;
+  private confirmingReset = false;
 
   override getSections(): FormSectionElement[] {
     ensureInstallDate();
@@ -249,7 +242,7 @@ export class StatisticsForm extends Form {
       ? Math.max(
           1,
           Math.floor(
-            (Date.now() - parseStoredDate(effectiveInstallDate).getTime()) /
+            (Date.now() - new Date(effectiveInstallDate).getTime()) /
               (1000 * 60 * 60 * 24),
           ),
         )
@@ -275,6 +268,15 @@ export class StatisticsForm extends Form {
         : undefined;
 
     return [
+      // Show confirmation warning at top when reset is pending
+      ...(this.confirmingReset ? [
+        Section("resetConfirm", [
+          ButtonRow("confirmResetAll", {
+            title: "ARE YOU VERY SURE? RESET ALL STATS?",
+            onSelect: Application.Selector(this as StatisticsForm, "handleConfirmReset"),
+          }),
+        ]),
+      ] : []),
       Section("overview", [
         LabelRow("headerLabel", {
           title: `Tracking Since: ${sinceStr}`,
@@ -341,56 +343,25 @@ export class StatisticsForm extends Form {
           title: "Remove Specific Stats",
           form: new RemoveSpecificStatsForm(),
         }),
-        ...(this.resetStep === 0
-          ? [
-              ButtonRow("resetStats", {
-                title: "Reset All Statistics",
-                onSelect: Application.Selector(this as StatisticsForm, "handleReset"),
-              }),
-            ]
-          : this.resetStep === 1
-            ? [
-                ButtonRow("areYouSure", {
-                  title: "Are You Sure?",
-                  onSelect: Application.Selector(this as StatisticsForm, "handleConfirmStep"),
-                }),
-                ButtonRow("cancelReset", {
-                  title: "Cancel",
-                  onSelect: Application.Selector(this as StatisticsForm, "handleCancelReset"),
-                }),
-              ]
-            : [
-                ButtonRow("finalResetStats", {
-                  title: "FINAL CLICK TO RESET ALL STATS",
-                  onSelect: Application.Selector(this as StatisticsForm, "handleConfirmReset"),
-                }),
-                ButtonRow("cancelResetFinal", {
-                  title: "Cancel",
-                  onSelect: Application.Selector(this as StatisticsForm, "handleCancelReset"),
-                }),
-              ]),
+        ButtonRow("resetStats", {
+          title: "Reset All Statistics",
+          onSelect: Application.Selector(
+            this as StatisticsForm,
+            "handleReset",
+          ),
+        }),
       ]),
     ];
   }
 
   async handleReset() {
-    this.resetStep = 1;
-    this.reloadForm();
-  }
-
-  async handleConfirmStep() {
-    this.resetStep = 2;
-    this.reloadForm();
-  }
-
-  async handleCancelReset() {
-    this.resetStep = 0;
+    this.confirmingReset = true;
     this.reloadForm();
   }
 
   async handleConfirmReset() {
     resetAllStatistics();
-    this.resetStep = 0;
+    this.confirmingReset = false;
     this.reloadForm();
   }
 
@@ -410,67 +381,7 @@ class RemoveSpecificStatsForm extends Form {
   private selectedRereads: string[] = [];
   private confirmingReset = false;
 
-  // Memoized per-render to avoid recomputing streak/sessions per category row
-  private _sessions: ReturnType<typeof getReadingSessions> | null = null;
-  private _streak: ReturnType<typeof getStreak> | null = null;
-
-  private ensureCache(): void {
-    if (!this._sessions) {
-      this._sessions = getReadingSessions();
-      this._streak = getStreak(this._sessions, getStreakGraceDays());
-    }
-  }
-
-  private getCategoryDisplayTitle(category: { id: string; title: string }): string {
-    this.ensureCache();
-    const sessions = this._sessions!;
-    const streak = this._streak!;
-
-    switch (category.id) {
-      case "tracking_since": {
-        const date = getStatsInstallDate();
-        return date ? `${category.title}: ${formatDate(date)}` : category.title;
-      }
-      case "manga_displayed":
-        return `${category.title}: ${formatNumber(getDisplayedMangaCount())}`;
-      case "distinct_displayed":
-        return `${category.title}: ${formatNumber(getDistinctDisplayedMangaCount())}`;
-      case "total_read":
-        return `${category.title}: ${formatNumber(getTotalMangaRead())}`;
-      case "total_reread":
-        return `${category.title}: ${formatNumber(getRereadStats().totalMangaReread)}`;
-      case "avg_per_day": {
-        const installDate = getStatsInstallDate();
-        const totalViews = sessions.reduce((sum, s) => sum + s.count, 0);
-        const daysActive = installDate
-          ? Math.max(1, Math.floor((Date.now() - new Date(installDate).getTime()) / (1000 * 60 * 60 * 24)))
-          : 1;
-        return `${category.title}: ${(totalViews / daysActive).toFixed(1)}`;
-      }
-      case "current_streak":
-        return `${category.title}: ${streak.current} day${streak.current !== 1 ? "s" : ""}`;
-      case "longest_streak":
-        return `${category.title}: ${streak.longest} day${streak.longest !== 1 ? "s" : ""}`;
-      case "data_received":
-        return `${category.title}: ${formatBytes(getDataReceived())}`;
-      case "page_distribution":
-        return category.title;
-      case "tag_counts":
-        return `${category.title}: ${formatNumber(Object.keys(getTagCounts()).length)} Tags`;
-      case "top_rereads":
-        return `${category.title}: ${formatNumber(getAllRereadManga().length)} Manga`;
-      case "screen_time":
-        return category.title;
-      default:
-        return category.title;
-    }
-  }
-
   override getSections(): FormSectionElement[] {
-    // Invalidate memoized cache so it recomputes once this render cycle
-    this._sessions = null;
-    this._streak = null;
-
     const rawTagCounts = getTagCounts();
     // Strip prefixes and merge for display, same as ContentStatsForm
     const mergedTagCounts: Record<string, number> = {};
@@ -499,11 +410,11 @@ class RemoveSpecificStatsForm extends Form {
           }),
         ]),
       ] : []),
-      Section({ id: "select"}, [
+      Section({ id: "select", footer: "Select The Stat Categories You Want To Reset. This Cannot Be Undone." }, [
         SelectRow("categories", {
           title: "Categories",
           value: this.selectedCategories,
-          options: STAT_CATEGORIES.map((c) => ({ id: c.id, title: this.getCategoryDisplayTitle(c) })),
+          options: STAT_CATEGORIES.map((c) => ({ id: c.id, title: c.title })),
           onValueChange: Application.Selector(
             this as RemoveSpecificStatsForm,
             "handleCategoryChange",
@@ -976,7 +887,7 @@ class ScreenTimeForm extends Form {
     const maxMinutes = Math.max(...nonZeroWeeks.map((w) => safeMinutes(w.minutes)), 1);
     const rows = nonZeroWeeks.map((w, idx) => {
       const mins = safeMinutes(w.minutes);
-      const start = parseStoredDate(w.weekStart);
+      const start = new Date(w.weekStart);
       const label = formatScreenTimeDate(start);
       const pct = Math.round((mins / maxMinutes) * 20);
       const bar = "\u2588".repeat(Math.max(1, pct));
