@@ -1,37 +1,14 @@
 {
-  "buildTime": "2026-02-15T18:10:38.605Z",
+  "buildTime": "2026-04-08T11:36:52.250Z",
   "builtWith": {
-    "toolchain": "1.0.0-alpha.57",
-    "types": "1.0.0-alpha.57"
+    "toolchain": "1.0.0-alpha.64",
+    "types": "1.0.0-alpha.64"
   },
   "repository": {
-    "name": "KakarotExtension",
+    "name": "kakarotextension",
     "description": "Kakarot extensions for Paperback"
   },
   "sources": [
-    {
-      "name": "Atsumaru",
-      "description": "Extension that pulls content from atsu.moe",
-      "version": "1.0.0-alpha.4",
-      "icon": "icon.png",
-      "language": "English",
-      "contentRating": "SAFE",
-      "capabilities": [
-        4,
-        64,
-        1
-      ],
-      "badges": [],
-      "developers": [
-        {
-          "name": "Karrot"
-        },
-        {
-          "name": "LucifersCircle"
-        }
-      ],
-      "id": "Atsumaru"
-    },
     {
       "name": "Batcave",
       "description": "Extension that pulls content from batcave.biz.",
@@ -72,7 +49,7 @@
     {
       "name": "Elftoon",
       "description": "Extension that pulls content from elftoon.com (Cloudflare protected).",
-      "version": "1.0.0-alpha.3",
+      "version": "1.0.0-alpha.4",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
@@ -89,6 +66,32 @@
         }
       ],
       "id": "Elftoon"
+    },
+    {
+      "name": "GodaComic",
+      "description": "Extension that pulls content from https://manhuascans.org/",
+      "version": "1.0.0-alpha.1",
+      "icon": "icon.png",
+      "language": "en",
+      "contentRating": "SAFE",
+      "badges": [
+        {
+          "label": "Aggregator",
+          "textColor": "#FFFFFF",
+          "backgroundColor": "#800080"
+        }
+      ],
+      "capabilities": [
+        4,
+        64,
+        1
+      ],
+      "developers": [
+        {
+          "name": "Karrot"
+        }
+      ],
+      "id": "GodaComic"
     },
     {
       "name": "Hentai2read",
@@ -111,40 +114,66 @@
       "id": "Hentai2read"
     },
     {
-      "name": "MangaFire",
-      "description": "Extension that pulls content from mangafire.to.",
-      "version": "1.0.0-alpha.9",
+      "name": "Kenmei",
+      "description": "Integrate with Kenmei (kenmei.co) for manga tracking",
+      "version": "1.1",
       "icon": "icon.png",
-      "language": "multi",
+      "language": "en",
       "contentRating": "SAFE",
-      "capabilities": [
-        4,
-        64,
-        1,
-        32
+      "capabilities": 102,
+      "badges": [
+        {
+          "label": "Tracker",
+          "textColor": "#FFFFFF",
+          "backgroundColor": "#5B4CF5"
+        }
       ],
-      "badges": [],
       "developers": [
         {
           "name": "Karrot"
-        },
-        {
-          "name": "nyzzik"
         }
       ],
-      "id": "MangaFire"
+      "id": "Kenmei"
+    },
+    {
+      "name": "LeagueOfComicGeeks",
+      "description": "Extension that integrates with leagueofcomicgeeks.com for tracking and collection management.",
+      "version": "1.0.0-alpha.1",
+      "icon": "icon.png",
+      "language": "en",
+      "contentRating": "SAFE",
+      "capabilities": 102,
+      "badges": [
+        {
+          "label": "Tracker",
+          "textColor": "#FFFFFF",
+          "backgroundColor": "#1E90FF"
+        },
+        {
+          "label": "Western Comics",
+          "textColor": "#FFFFFF",
+          "backgroundColor": "#C71585"
+        }
+      ],
+      "developers": [
+        {
+          "name": "Karrot"
+        }
+      ],
+      "id": "LeagueOfComicGeeks"
     },
     {
       "name": "Mangaball",
       "description": "Extension that pulls content from mangaball.net.",
-      "version": "1.0.0-alpha.2",
+      "version": "1.0.0-alpha.4",
       "icon": "icon.png",
       "language": "multi",
       "contentRating": "ADULT",
       "capabilities": [
         4,
         64,
-        1
+        1,
+        16
       ],
       "badges": [],
       "developers": [
@@ -157,7 +186,7 @@
     {
       "name": "Mangabuddy",
       "description": "Extension that pulls content from mangabuddy.com.",
-      "version": "1.0.0-alpha.4",
+      "version": "1.0.0-alpha.5",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "MATURE",
@@ -205,45 +234,30 @@
       "id": "Mangabuddy"
     },
     {
-      "name": "Mangapark",
-      "description": "Extension that pulls content from mangapark.net.",
-      "version": "1.0.0-alpha.7",
-      "icon": "icon.png",
-      "language": "multi",
-      "contentRating": "SAFE",
-      "capabilities": [
-        4,
-        64,
-        1,
-        32
-      ],
-      "badges": [],
-      "developers": [
-        {
-          "name": "Karrot"
-        }
-      ],
-      "id": "Mangapark"
-    },
-    {
-      "name": "Mangataro",
-      "description": "Extension that pulls content from mangataro.org.",
+      "name": "Mangacloud",
+      "description": "Extension that pulls content from https://mangacloud.org/",
       "version": "1.0.0-alpha.1",
       "icon": "icon.png",
-      "language": "English",
+      "language": "en",
       "contentRating": "SAFE",
+      "badges": [
+        {
+          "label": "Aggregator",
+          "textColor": "#FFFFFF",
+          "backgroundColor": "#800080"
+        }
+      ],
       "capabilities": [
         4,
         64,
         1
       ],
-      "badges": [],
       "developers": [
         {
           "name": "Karrot"
         }
       ],
-      "id": "Mangataro"
+      "id": "Mangacloud"
     },
     {
       "name": "NHentai",
@@ -290,9 +304,61 @@
       "id": "NovelFire"
     },
     {
+      "name": "Projectsuki",
+      "description": "Extension that pulls content from https://projectsuki.com/",
+      "version": "1.0.0-alpha.2",
+      "icon": "icon.png",
+      "language": "en",
+      "contentRating": "SAFE",
+      "badges": [
+        {
+          "label": "Aggregator",
+          "textColor": "#FFFFFF",
+          "backgroundColor": "#800080"
+        }
+      ],
+      "capabilities": [
+        4,
+        64,
+        1
+      ],
+      "developers": [
+        {
+          "name": "Karrot"
+        }
+      ],
+      "id": "Projectsuki"
+    },
+    {
+      "name": "Rawkuma",
+      "description": "Extension that pulls content from https://rawkuma.net",
+      "version": "1.1",
+      "icon": "icon.png",
+      "language": "jp",
+      "contentRating": "SAFE",
+      "badges": [
+        {
+          "label": "Raw Provider",
+          "textColor": "#FFFFFF",
+          "backgroundColor": "#800080"
+        }
+      ],
+      "capabilities": [
+        4,
+        64,
+        1
+      ],
+      "developers": [
+        {
+          "name": "Karrot"
+        }
+      ],
+      "id": "Rawkuma"
+    },
+    {
       "name": "ReadAllComics",
       "description": "Extension that pulls content from https://readallcomics.com",
-      "version": "1.0.0-alpha.3",
+      "version": "1.2",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
@@ -329,7 +395,7 @@
     {
       "name": "ReadComicsOnlineRu",
       "description": "Extension that pulls content from readcomicsonline.ru.",
-      "version": "1.0.0-alpha.2",
+      "version": "1.0.0-alpha.3",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
