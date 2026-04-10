@@ -38,6 +38,7 @@ import {
   getRemoveSeparatorSpacesSetting,
   getScreenTimeEnabledSetting,
   getStrictFavoritesFilterSetting,
+  getRateLimitLiteFallbackSetting,
   getThumbnailQualitySetting,
   LANGUAGE_OPTIONS,
   resetNHentaiSettings,
@@ -62,6 +63,7 @@ import {
   setRelatedLanguageSetting,
   setRemoveSeparatorSpacesSetting,
   setStrictFavoritesFilterSetting,
+  setRateLimitLiteFallbackSetting,
   setThumbnailQualitySetting,
   THUMBNAIL_QUALITY_OPTIONS,
   ThumbnailQuality,
@@ -148,6 +150,7 @@ function getDisplayOptionLabel(
     desc_show_date: `Show Date in Description ${dateEx}`,
     desc_relative_date: `Show Relative Date in Description ${relEx}`,
     parodies_bottom: "Show Characters in Description",
+    show_artists_in_desc: "Show Artists in Description",
     show_id: "Show 6-digit ID in Description",
     show_tags_in_desc: "Show Tags in Description",
     hide_read: "Hide Read Manga",
@@ -322,6 +325,7 @@ export class SettingsForm extends Form {
       "desc_show_date",
       "desc_relative_date",
       "parodies_bottom",
+      "show_artists_in_desc",
       "show_id",
       "show_tags_in_desc",
       "show_related_order",
@@ -367,7 +371,6 @@ export class SettingsForm extends Form {
             this.languageSetting.length !== 1
               ? "Preferred Languages"
               : "Preferred Language",
-          subtitle: "Applied To Home And Search Results",
           value: this.languageSetting,
           options: LANGUAGE_OPTIONS.map((option) => ({
             id: option.id,
@@ -433,7 +436,7 @@ export class SettingsForm extends Form {
       Section("statistics", [
         NavigationRow("mangaFiltersNav", {
           title: "Manga Filters",
-          subtitle: "Applied To Home And Search Results",
+          subtitle: "Applies To Search And Discover",
           form: new MangaFiltersForm(),
         }),
         NavigationRow("discoverOrderNav", {
@@ -548,6 +551,7 @@ class MangaFiltersForm extends Form {
   private favoritesThreshold = getFavoritesThresholdSetting();
   private favoritesThresholdMax = getFavoritesThresholdMaxSetting();
   private strictFavorites = getStrictFavoritesFilterSetting();
+  private rateLimitLiteFallback = getRateLimitLiteFallbackSetting();
   private incognito = getIncognitoModeSetting();
   private hideRead = getHideReadSetting();
   private enableRelated = getEnableRelatedSetting();
@@ -617,9 +621,18 @@ class MangaFiltersForm extends Form {
       ]),
       // Section 2: Behavior toggles — single section, reordered
       Section("behaviorSection", [
+        ToggleRow("rateLimitLiteFallback", {
+          title: "Keep Loading When Busy",
+          subtitle:
+            "If the site slows down, keep loading manga with basic subtitles.",
+          value: this.rateLimitLiteFallback,
+          onValueChange: Application.Selector(
+            this as MangaFiltersForm,
+            "updateRateLimitLiteFallback",
+          ),
+        }),
         ToggleRow("filterRelatedByLanguage", {
           title: "Related Preferred Language",
-          subtitle: "Only Show Related Entries Matching the Preferred Language (Slower)",
           value: this.relatedLanguage !== "all",
           onValueChange: Application.Selector(
             this as MangaFiltersForm,
@@ -817,6 +830,11 @@ class MangaFiltersForm extends Form {
   async updateStrictFavorites(value: boolean): Promise<void> {
     this.strictFavorites = !!value;
     setStrictFavoritesFilterSetting(this.strictFavorites);
+  }
+
+  async updateRateLimitLiteFallback(value: boolean): Promise<void> {
+    this.rateLimitLiteFallback = !!value;
+    setRateLimitLiteFallbackSetting(this.rateLimitLiteFallback);
   }
 
   async updateDaysOldFilter(value: string): Promise<void> {

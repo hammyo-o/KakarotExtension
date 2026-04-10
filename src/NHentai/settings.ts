@@ -67,8 +67,10 @@ const STATS_DATA_RECEIVED_KEY = "nhentai.stats.dataReceived";
 const STATS_READ_COUNT_MAP_KEY = "nhentai.stats.readCounts";
 const STATS_SCREEN_TIME_KEY = "nhentai.stats.screenTime";
 const STATS_SCREEN_TIME_ENABLED_KEY = "nhentai.stats.screenTimeEnabled";
+const STATS_TRACKING_ENABLED_KEY = "nhentai.stats.trackingEnabled";
 const STATS_STREAK_GRACE_KEY = "nhentai.stats.streakGrace";
 const STATS_MARK_READ_ON_DESC_COUNT_KEY = "nhentai.stats.markReadOnDescCount";
+const RATE_LIMIT_LITE_FALLBACK_KEY = "nhentai.settings.rateLimitLiteFallback";
 
 type ReadCountEntry = { count: number; title?: string; tags?: string[] };
 type ReadCountMap = Record<string, ReadCountEntry>;
@@ -91,6 +93,7 @@ export const DEFAULT_DISPLAY_OPTIONS: DisplayOptionId[] = [
   "desc_show_date", // Show full date in description - ON by default
   "desc_relative_date", // Show relative date in description - ON by default
   "parodies_bottom", // List parodies/characters in description - ON by default
+  "show_artists_in_desc",
   "show_id",
   "show_tags_in_desc",
   "show_lang_desc",
@@ -149,6 +152,7 @@ export type DisplayOptionId =
   | "desc_show_date"
   | "desc_relative_date"
   | "parodies_bottom"
+  | "show_artists_in_desc"
   | "show_id"
   | "show_tags_in_desc"
   | "show_related_order"
@@ -293,6 +297,7 @@ export const DISPLAY_OPTION_VALUES: { id: DisplayOptionId; label: string }[] = [
   { id: "desc_show_date", label: "Show Date in Description" },
   { id: "desc_relative_date", label: "Show Relative Date in Description" },
   { id: "parodies_bottom", label: "List Parodies/Characters at Bottom" },
+  { id: "show_artists_in_desc", label: "Show Artists in Description" },
   { id: "show_id", label: "Show 6-digit ID in Description" },
   { id: "show_tags_in_desc", label: "Show Tags in Description" },
   { id: "show_related_order", label: "Show Related Order ([1], [2], etc.)" },
@@ -641,6 +646,7 @@ export function resetNHentaiSettings(): void {
   );
   Application.setState(true, ENABLE_REREAD_SECTION_KEY);
   Application.setState(false, STRICT_FAVORITES_FILTER_KEY);
+  Application.setState(false, RATE_LIMIT_LITE_FALLBACK_KEY);
   // Discover section order & visibility
   Application.setState([...DEFAULT_SECTION_ORDER], DISCOVER_SECTION_ORDER_KEY);
   Application.setState(
@@ -994,6 +1000,15 @@ export function getStrictFavoritesFilterSetting(): boolean {
 
 export function setStrictFavoritesFilterSetting(value: boolean): void {
   Application.setState(value, STRICT_FAVORITES_FILTER_KEY);
+}
+
+export function getRateLimitLiteFallbackSetting(): boolean {
+  const value = Application.getState(RATE_LIMIT_LITE_FALLBACK_KEY);
+  return typeof value === "boolean" ? value : false;
+}
+
+export function setRateLimitLiteFallbackSetting(value: boolean): void {
+  Application.setState(value, RATE_LIMIT_LITE_FALLBACK_KEY);
 }
 
 export function parsePagesExpression(value: string): {
@@ -1485,6 +1500,7 @@ export function setStatsInstallDate(date: string): void {
 }
 
 export function ensureInstallDate(): void {
+  if (!getStatsTrackingEnabledSetting()) return;
   if (!getStatsInstallDate()) {
     Application.setState(new Date().toISOString(), STATS_INSTALL_DATE_KEY);
   }
@@ -1535,6 +1551,7 @@ export function getDisplayedMangaCount(): number {
 }
 
 export function incrementDisplayedManga(mangaId?: string): void {
+  if (!getStatsTrackingEnabledSetting()) return;
   Application.setState(getDisplayedMangaCount() + 1, STATS_DISPLAYED_MANGA_KEY);
 
   if (!mangaId) return;
@@ -1576,6 +1593,7 @@ export function getReadingSessions(): ReadingSession[] {
 }
 
 export function recordReadingSession(): void {
+  if (!getStatsTrackingEnabledSetting()) return;
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const sessions = getReadingSessions();
@@ -1618,6 +1636,7 @@ export function getPageCounts(): Record<string, number> {
 }
 
 export function recordPageCount(pages: number): void {
+  if (!getStatsTrackingEnabledSetting()) return;
   const counts = getPageCounts();
   const bucket =
     pages <= 20
@@ -1642,6 +1661,7 @@ export function getTagCounts(): Record<string, number> {
 }
 
 export function recordTagCounts(tags: string[]): void {
+  if (!getStatsTrackingEnabledSetting()) return;
   const counts = getTagCounts();
   for (const tag of tags) {
     const normalized = tag.toLowerCase().trim();
@@ -1669,6 +1689,7 @@ export function getTotalMangaRead(): number {
 }
 
 export function incrementTotalMangaRead(): void {
+  if (!getStatsTrackingEnabledSetting()) return;
   Application.setState(getTotalMangaRead() + 1, STATS_TOTAL_READ_KEY);
 }
 
@@ -1678,6 +1699,7 @@ export function getMarkReadOnDescCount(): number {
 }
 
 export function incrementMarkReadOnDescCount(): void {
+  if (!getStatsTrackingEnabledSetting()) return;
   Application.setState(
     getMarkReadOnDescCount() + 1,
     STATS_MARK_READ_ON_DESC_COUNT_KEY,
@@ -1721,6 +1743,7 @@ export function recordMangaReadCount(
   isFirstRead = false,
   tags?: string[],
 ): void {
+  if (!getStatsTrackingEnabledSetting()) return;
   if (!mangaId) return;
 
   // For rereads (not first read), enforce 5-minute cooldown per manga
@@ -1824,12 +1847,14 @@ export function getDataReceived(): number {
 }
 
 export function addDataReceived(bytes: number): void {
+  if (!getStatsTrackingEnabledSetting()) return;
   if (bytes > 0) {
     Application.setState(getDataReceived() + bytes, STATS_DATA_RECEIVED_KEY);
   }
 }
 
 export function recordScreenTime(minutes: number): void {
+  if (!getStatsTrackingEnabledSetting()) return;
   if (!getScreenTimeEnabledSetting()) return;
   if (minutes <= 0 || Number.isNaN(minutes)) return;
   const now = new Date();
@@ -1916,6 +1941,17 @@ export function getScreenTimeEnabledSetting(): boolean {
 
 export function setScreenTimeEnabledSetting(enabled: boolean): void {
   Application.setState(enabled, STATS_SCREEN_TIME_ENABLED_KEY);
+}
+
+export function getStatsTrackingEnabledSetting(): boolean {
+  const value = Application.getState(STATS_TRACKING_ENABLED_KEY) as
+    | boolean
+    | undefined;
+  return value !== false;
+}
+
+export function setStatsTrackingEnabledSetting(enabled: boolean): void {
+  Application.setState(enabled, STATS_TRACKING_ENABLED_KEY);
 }
 
 export function getScreenTimeMode(): "week" | "day" {

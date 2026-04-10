@@ -6,6 +6,7 @@ import {
   NavigationRow,
   Section,
   SelectRow,
+  ToggleRow,
 } from "@paperback/types";
 import {
   ensureInstallDate,
@@ -20,6 +21,7 @@ import {
   getScreenTimeLastNDays,
   getScreenTimeLastNWeeks,
   getScreenTimeEnabledSetting,
+  getStatsTrackingEnabledSetting,
   getScreenTimeMode,
   getStatsInstallDate,
   getStreakGraceDays,
@@ -36,6 +38,7 @@ import {
   removeSpecificRereads,
   setRereadDisplayLimit,
   setScreenTimeEnabledSetting,
+  setStatsTrackingEnabledSetting,
   setScreenTimeMode,
   setStreakGraceDays,
   setTagDisplayLimit,
@@ -218,6 +221,7 @@ function getStreak(sessions: ReadingSession[], graceDays: number = 0): {
 
 export class StatisticsForm extends Form {
   private resetStep = 0;
+  private statsTrackingEnabled = getStatsTrackingEnabledSetting();
 
   override getSections(): FormSectionElement[] {
     ensureInstallDate();
@@ -341,6 +345,15 @@ export class StatisticsForm extends Form {
           title: "Remove Specific Stats",
           form: new RemoveSpecificStatsForm(),
         }),
+        ToggleRow("statsTrackingEnabled", {
+          title: "Disable All Stat Tracking",
+          subtitle: "Stop Tracking Statistics & Screen Time",
+          value: !this.statsTrackingEnabled,
+          onValueChange: Application.Selector(
+            this as StatisticsForm,
+            "handleStatsTrackingToggle",
+          ),
+        }),
         ...(this.resetStep === 0
           ? [
               ButtonRow("resetStats", {
@@ -398,6 +411,12 @@ export class StatisticsForm extends Form {
     const current = getStreakGraceDays();
     if (current >= 2) return;
     setStreakGraceDays(current + 1);
+    this.reloadForm();
+  }
+
+  async handleStatsTrackingToggle(value: boolean) {
+    this.statsTrackingEnabled = !value;
+    setStatsTrackingEnabledSetting(this.statsTrackingEnabled);
     this.reloadForm();
   }
 }
@@ -1005,6 +1024,7 @@ class ScreenTimeForm extends Form {
     ]);
 
     const body = this.mode === "week" ? this.renderWeekly() : this.renderDaily();
+    const statsTrackingEnabled = getStatsTrackingEnabledSetting();
     const disableSection = this.confirmingDisable
       ? Section("disableScreenTime", [
           ButtonRow("confirmDisableBtn", {
@@ -1022,6 +1042,8 @@ class ScreenTimeForm extends Form {
             onSelect: Application.Selector(this as ScreenTimeForm, "handleDisableScreenTime"),
           }),
         ]);
-    return [toggle, ...body, disableSection];
+    return statsTrackingEnabled
+      ? [toggle, ...body, disableSection]
+      : [toggle, ...body];
   }
 }

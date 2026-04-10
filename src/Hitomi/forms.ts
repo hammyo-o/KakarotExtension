@@ -127,6 +127,7 @@ function getDisplayOptionLabel(
     desc_show_date: `Show Date in Description ${dateEx}`,
     desc_relative_date: `Show Relative Date in Description ${relEx}`,
     parodies_bottom: "Show Characters in Description",
+    show_artists_in_desc: "Show Artists in Description",
     show_tags_in_desc: "Show Tags in Description",
     show_related_order: "Show Related Count and Order",
     show_manga_id_in_description: "Show Manga ID in Description",
@@ -177,6 +178,7 @@ export class HitomiSettingsForm extends Form {
       "desc_show_date",
       "desc_relative_date",
       "parodies_bottom",
+      "show_artists_in_desc",
       "show_tags_in_desc",
       "show_related_order",
       "show_tag_counts",
@@ -216,7 +218,6 @@ export class HitomiSettingsForm extends Form {
             this.languageSetting[0] !== "all"
               ? "Preferred Language"
               : "Preferred Languages",
-          subtitle: "Applied To Home And Search Results",
           value: this.languageSetting,
           options: LANGUAGE_OPTIONS.map((option) => ({
             id: option.id,
@@ -274,7 +275,7 @@ export class HitomiSettingsForm extends Form {
       Section("statistics", [
         NavigationRow("mangaFiltersNav", {
           title: "Manga Filters",
-          subtitle: "Applied To Home And Search Results",
+          subtitle: "Applies To Search And Discover",
           form: this.getMangaFiltersForm(),
         }),
         NavigationRow("discoverOrderNav", {

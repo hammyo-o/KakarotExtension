@@ -1753,10 +1753,13 @@ export class HitomiExtension
     this.searchFiltersDirty = false;
 
     await this.getTags({ allowPartial: false });
-    const displayTags = this.getSearchFilterTagGroups().filter(
-      (t) =>
-        t.count >= 50 && !t.slugs.every((slug) => isUglyConventionTag(slug)),
+    const allDisplayableTags = this.getSearchFilterTagGroups().filter(
+      (t) => !t.slugs.every((slug) => isUglyConventionTag(slug)),
     );
+    const displayTags =
+      allDisplayableTags.filter((t) => t.count >= 50).length > 0
+        ? allDisplayableTags.filter((t) => t.count >= 50)
+        : allDisplayableTags;
     const savedTags = getSearchFilterTags();
     const cleanedTags: Record<string, "included" | "excluded"> = {};
     const displayIds = new Set<string>();
@@ -1829,9 +1832,12 @@ export class HitomiExtension
           const countStr = abbreviate
             ? _abbreviateCount(t.count)
             : t.count.toString();
+          const cleanedLabel = t.display.replace(/\s*-\s*\([^)]*\)\s*$/, "");
           return {
             id: t.id,
-            value: showTagCounts ? `${t.display} - (${countStr})` : t.display,
+            value: showTagCounts
+              ? `${cleanedLabel} - (${countStr})`
+              : cleanedLabel,
           };
         }),
         value: cleanedTags,
@@ -2392,13 +2398,13 @@ export class HitomiExtension
 
       // When filtering removes all items on this page but more IDs exist upstream,
       // keep pagination alive so the framework fetches the next page instead of
-      // stopping entirely. Cap at 3 consecutive empty advances to prevent infinite loops.
+      // stopping entirely. Use a wider cap because strict filters can skip many pages.
       if (finalItems.length === 0 && actuallyHasMore) {
         this.searchConsecutiveEmpty++;
       } else {
         this.searchConsecutiveEmpty = 0;
       }
-      const continueOffset = actuallyHasMore && this.searchConsecutiveEmpty < 3;
+      const continueOffset = actuallyHasMore && this.searchConsecutiveEmpty < 8;
       logHitomiDebug(
         "search:return",
         `items=${finalItems.length}`,
@@ -2494,6 +2500,9 @@ export class HitomiExtension
 
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
     const gallery = await this.loadGallery(sourceManga.mangaId);
+    const isRead = getReadCache().has(sourceManga.mangaId);
+    sourceManga.mangaInfo.synopsis = this.buildSynopsis(gallery, isRead);
+    sourceManga.mangaInfo.tagGroups = this.convertTags(gallery);
     return [
       {
         chapterId: sourceManga.mangaId,
@@ -2847,7 +2856,7 @@ export class HitomiExtension
     return {
       items,
       metadata:
-        items.length > 0 && hasMore ? { offset: offset + consumed } : undefined,
+        hasMore ? { offset: offset + consumed } : undefined,
     };
   }
 
@@ -2922,7 +2931,7 @@ export class HitomiExtension
       recordDisplayedTiles(items);
       return {
         items,
-        metadata: items.length > 0 && hasMore ? { offset: cursor } : undefined,
+        metadata: hasMore ? { offset: cursor } : undefined,
       };
     } catch (e) {
       console.error("[Hitomi Last Read] Failed", e);
@@ -2983,7 +2992,7 @@ export class HitomiExtension
     return {
       items,
       metadata:
-        items.length > 0 && hasMore ? { offset: offset + consumed } : undefined,
+        hasMore ? { offset: offset + consumed } : undefined,
     };
   }
 
@@ -3122,7 +3131,7 @@ export class HitomiExtension
     return {
       items,
       metadata:
-        items.length > 0 && hasMore ? { offset: offset + consumed } : undefined,
+        hasMore ? { offset: offset + consumed } : undefined,
     };
   }
 
@@ -3648,7 +3657,7 @@ export class HitomiExtension
 
       return {
         items,
-        metadata: items.length > 0 && hasMore ? { offset: cursor } : undefined,
+        metadata: hasMore ? { offset: cursor } : undefined,
       };
     } catch (e) {
       console.error("[Hitomi Related] Failed", e);
@@ -3727,7 +3736,7 @@ export class HitomiExtension
       recordDisplayedTiles(items);
       return {
         items,
-        metadata: items.length > 0 && hasMore ? { offset: cursor } : undefined,
+        metadata: hasMore ? { offset: cursor } : undefined,
       };
     } catch (e) {
       console.error("[Hitomi Top Reread] Failed", e);
@@ -4351,26 +4360,27 @@ export class HitomiExtension
       });
     }
 
-    if (gallery.artists.length > 0) {
+    const showArtistsInDesc = displayOptions.includes("show_artists_in_desc");
+    if (!showArtistsInDesc && gallery.artists.length > 0) {
       sections.push({
         id: "artist",
         title: "Artists",
-        tags: gallery.artists.map((x) => ({
-          id: buildId("artist", x),
-          title: x,
-        })),
-      });
+      tags: gallery.artists.map((x) => ({
+        id: buildId("artist", x),
+        title: x,
+      })),
+    });
     }
 
-    if (gallery.groups.length > 0) {
+    if (!showArtistsInDesc && gallery.groups.length > 0) {
       sections.push({
         id: "group",
         title: "Groups",
-        tags: gallery.groups.map((x) => ({
-          id: buildId("group", x),
-          title: x,
-        })),
-      });
+      tags: gallery.groups.map((x) => ({
+        id: buildId("group", x),
+        title: x,
+      })),
+    });
     }
 
     // Types section at the end (doujinshi, manga, artistcg, etc.)
@@ -4428,6 +4438,24 @@ export class HitomiExtension
         title: "ID",
         tags: [{ id: `id_${gallery.id}`, title: gallery.id.toString() }],
       });
+    }
+
+    const artistSections = sections.filter(
+      (section) => section.id === "artist" || section.id === "group",
+    );
+    if (artistSections.length > 0) {
+      const nonArtistSections = sections.filter(
+        (section) => section.id !== "artist" && section.id !== "group",
+      );
+      const idTarget = nonArtistSections.findIndex(
+        (section) => section.id === "gallery_id",
+      );
+      if (idTarget >= 0) {
+        nonArtistSections.splice(idTarget, 0, ...artistSections);
+      } else {
+        nonArtistSections.push(...artistSections);
+      }
+      return nonArtistSections;
     }
 
     return sections;
@@ -4595,6 +4623,7 @@ export class HitomiExtension
 
     const lines: string[] = [headerLine];
     const parodyLines: string[] = [];
+    const artistLines: string[] = [];
     const seriesForDescription = gallery.series.filter(
       (x) => x.trim().toLowerCase() !== "original",
     );
@@ -4602,6 +4631,18 @@ export class HitomiExtension
       parodyLines.push(`Series: ${seriesForDescription.join(", ")}`);
     if (gallery.characters.length > 0)
       parodyLines.push(`Characters: ${gallery.characters.join(", ")}`);
+    if (
+      displayOptions.includes("show_artists_in_desc") &&
+      gallery.artists.length > 0
+    ) {
+      artistLines.push(`Artists: ${gallery.artists.join(", ")}`);
+    }
+    if (
+      displayOptions.includes("show_artists_in_desc") &&
+      gallery.groups.length > 0
+    ) {
+      artistLines.push(`Groups: ${gallery.groups.join(", ")}`);
+    }
 
     if (promotedTags.length > 0) {
       const promotedLine = promotedTags
@@ -4613,6 +4654,7 @@ export class HitomiExtension
     const listParodiesInDesc = displayOptions.includes("parodies_bottom");
     if (listParodiesInDesc && parodyLines.length > 0)
       lines.push(...parodyLines);
+    if (artistLines.length > 0) lines.push(...artistLines);
     return lines.join("\n");
   }
 }

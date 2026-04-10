@@ -60,6 +60,7 @@ import {
   getLanguageToken,
   getMarkReadOnViewSetting,
   getPagesExpressionSetting,
+  getRateLimitLiteFallbackSetting,
   getRelatedLanguageSetting,
   getRemoveSeparatorSpacesSetting,
   getRereadCount,
@@ -1066,9 +1067,9 @@ export class NHentaiExtension implements NHentaiImplementation {
     return {
       items,
       metadata:
-        items.length > 0 && hasMore
+        hasMore
           ? {
-              page: currentPage,
+              page: currentPage + 1,
               ...(bufferedGalleries.length > 0
                 ? { buffer: bufferedGalleries }
                 : {}),
@@ -1776,109 +1777,7 @@ export class NHentaiExtension implements NHentaiImplementation {
       gallery.title.japanese,
       gallery.title.pretty,
     ].filter((title): title is string => !!title);
-
-    const displayOptions = getDisplayOptionsSetting();
-    const dateFmt = getDateFormatSetting();
-    const uploadDate = new Date(gallery.upload_date * 1000);
-    const languageSlug = this.extractLanguageSlug(gallery.tags);
-    const languageAbbrev = getLanguageAbbreviationFromSlug(languageSlug);
-    const parts: string[] = [];
-    // Include two-letter language code in description if enabled (or by default if no setting)
-    if (displayOptions.includes("show_lang_desc")) {
-      parts.push(languageAbbrev);
-    }
-
-    const isRead = isMangaRead(gallery.id.toString());
-    const showReadLetter = displayOptions.includes("hide_read_letter"); // Note: Despite the name, this now means "show" when present
-    const readPrefix = isRead && showReadLetter ? "r" : "";
-    if (
-      displayOptions.length === 0 ||
-      displayOptions.includes("show_page_count")
-    ) {
-      parts.push(`${readPrefix}${gallery.num_pages}p`);
-    }
-
-    // Only show favorites if > 0
-    if (gallery.num_favorites > 0) {
-      let favs = gallery.num_favorites.toString();
-      if (gallery.num_favorites >= 1_000_000) {
-        favs = `${Math.round(gallery.num_favorites / 1_000_000)}M`;
-      } else if (gallery.num_favorites >= 1000) {
-        favs = `${Math.round(gallery.num_favorites / 1000)}k`;
-      }
-      parts.push(favs);
-    }
-
-    const uploadHours = uploadDate.getHours();
-    const uploadMins = uploadDate.getMinutes();
-    const uploadSuffix = uploadHours >= 12 ? "PM" : "AM";
-    const uploadH12 = ((uploadHours + 11) % 12) + 1;
-    const uploadMinsStr = uploadMins.toString().padStart(2, "0");
-    const uploadTimeStr = `${uploadH12}:${uploadMinsStr}${uploadSuffix}`;
-
-    let dateAbsolute = "";
-    if (displayOptions.includes("desc_show_date")) {
-      dateAbsolute = `${formatDateByPattern(uploadDate, dateFmt)} @ ${uploadTimeStr}`;
-    }
-    const dateRelative = displayOptions.includes("desc_relative_date")
-      ? this.relativeTime(uploadDate)
-      : "";
-
-    // Ensure relative appears before absolute in description top line
-    if (dateRelative) parts.push(dateRelative);
-    if (dateAbsolute) parts.push(dateAbsolute);
-
-    // Add gallery ID to end of first line if enabled
-    if (displayOptions.includes("show_id")) {
-      parts.push(gallery.id.toString());
-    }
-
-    const removeSpaces = getRemoveSeparatorSpacesSetting();
-    const separator = removeSpaces ? "|" : " | ";
-    const infoLine = parts.join(separator);
-    const topTags = this.getTopTags(gallery);
-    let tagsLine = "";
-    if (topTags.length > 0) {
-      tagsLine = topTags.join(", ");
-    }
-
-    const parodies = gallery.tags
-      .filter((t) => t.type === "parody")
-      .map((t) => t.name.replace(/_/g, " ").trim())
-      .filter((name) => name.length > 0);
-    const characters = gallery.tags
-      .filter((t) => t.type === "character")
-      .map((t) => t.name.replace(/_/g, " ").trim())
-      .filter((name) => name.length > 0);
-
-    const extraLines: string[] = [];
-    if (displayOptions.includes("parodies_bottom")) {
-      // Hide "Parodies: original" when "original" is the only parody
-      const nonOriginalParodies = parodies.filter(
-        (p) => p.toLowerCase() !== "original",
-      );
-      if (nonOriginalParodies.length > 0)
-        extraLines.push(`Parodies: ${parodies.join(", ")}`);
-      if (characters.length > 0)
-        extraLines.push(`Characters: ${characters.join(", ")}`);
-    }
-
-    let synopsis = infoLine;
-    // Tags should appear immediately after the info line
-    if (tagsLine) {
-      synopsis += `\n${tagsLine}`;
-    }
-    // Parodies/Characters immediately after tags (no extra blank line)
-    if (extraLines.length > 0) {
-      synopsis += `\n${extraLines.join("\n")}`;
-    }
-
-    const excludedTags = new Set(topTags);
-    // When parodies/characters are shown in description, exclude them from scroller
-    if (displayOptions.includes("parodies_bottom")) {
-      for (const p of parodies) excludedTags.add(p.toLowerCase());
-      for (const c of characters) excludedTags.add(c.toLowerCase());
-    }
+    const { synopsis, excludedTags } = this.createSynopsis(gallery);
     const tagSections = this.createTagSections(gallery, excludedTags);
 
     return {
@@ -2619,7 +2518,7 @@ export class NHentaiExtension implements NHentaiImplementation {
 
       return {
         items,
-        metadata: items.length > 0 && hasMore ? { offset: cursor } : undefined,
+        metadata: hasMore ? { offset: cursor } : undefined,
       };
     } catch (e) {
       if (e instanceof CloudflareError) throw e;
@@ -2672,7 +2571,7 @@ export class NHentaiExtension implements NHentaiImplementation {
       return {
         items,
         metadata:
-          items.length > 0 && hasMore ? { offset: offset + limit } : undefined,
+          hasMore ? { offset: offset + limit } : undefined,
       };
     } catch (e) {
       if (e instanceof CloudflareError) throw e;
@@ -2746,7 +2645,7 @@ export class NHentaiExtension implements NHentaiImplementation {
       return {
         items,
         metadata:
-          items.length > 0 && hasMore ? { offset: offset + limit } : undefined,
+          hasMore ? { offset: offset + limit } : undefined,
       };
     } catch (e) {
       if (e instanceof CloudflareError) throw e;
@@ -2758,6 +2657,12 @@ export class NHentaiExtension implements NHentaiImplementation {
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
     const gallery = await this.fetchGallery(sourceManga.mangaId);
     const languageSlug = this.extractLanguageSlug(gallery.tags);
+    const { synopsis, excludedTags } = this.createSynopsis(gallery);
+    sourceManga.mangaInfo.synopsis = synopsis;
+    sourceManga.mangaInfo.tagGroups = this.createTagSections(
+      gallery,
+      excludedTags,
+    );
 
     const chapter: Chapter = {
       chapterId: gallery.id.toString(),
@@ -2955,6 +2860,7 @@ export class NHentaiExtension implements NHentaiImplementation {
       // Skip hydration - search API provides enough data (num_pages) for basic subtitles
       return galleries;
     }
+    const allowLiteFallback = getRateLimitLiteFallbackSetting();
 
     const result = [...galleries];
     const hydrateLimit = Number.isFinite(maxToHydrate)
@@ -3020,7 +2926,9 @@ export class NHentaiExtension implements NHentaiImplementation {
           `[NHentai] Hydration stopped early: ${consecutive429s} consecutive 429 errors with no successful fetches. ` +
             `Returning ${result.filter((g) => !g.isLite).length} hydrated + ${result.filter((g) => g.isLite).length} lite galleries.`,
         );
-        break;
+        if (allowLiteFallback) {
+          break;
+        }
       }
     }
 
@@ -3902,6 +3810,119 @@ export class NHentaiExtension implements NHentaiImplementation {
     return "jpg";
   }
 
+  private createSynopsis(
+    gallery: Gallery,
+  ): { synopsis: string; excludedTags: Set<string> } {
+    const displayOptions = getDisplayOptionsSetting();
+    const excludedTags = new Set<string>();
+    const dateFmt = getDateFormatSetting();
+    const uploadDate = new Date(gallery.upload_date * 1000);
+    const languageSlug = this.extractLanguageSlug(gallery.tags);
+    const languageAbbrev = getLanguageAbbreviationFromSlug(languageSlug);
+    const parts: string[] = [];
+    if (displayOptions.includes("show_lang_desc")) {
+      parts.push(languageAbbrev);
+    }
+
+    const isRead = isMangaRead(gallery.id.toString());
+    const showReadLetter = displayOptions.includes("hide_read_letter");
+    const readPrefix = isRead && showReadLetter ? "r" : "";
+    if (
+      displayOptions.length === 0 ||
+      displayOptions.includes("show_page_count")
+    ) {
+      parts.push(`${readPrefix}${gallery.num_pages}p`);
+    }
+
+    if (gallery.num_favorites > 0) {
+      let favs = gallery.num_favorites.toString();
+      if (gallery.num_favorites >= 1_000_000) {
+        favs = `${Math.round(gallery.num_favorites / 1_000_000)}M`;
+      } else if (gallery.num_favorites >= 1000) {
+        favs = `${Math.round(gallery.num_favorites / 1000)}k`;
+      }
+      parts.push(favs);
+    }
+
+    const uploadHours = uploadDate.getHours();
+    const uploadMins = uploadDate.getMinutes();
+    const uploadSuffix = uploadHours >= 12 ? "PM" : "AM";
+    const uploadH12 = ((uploadHours + 11) % 12) + 1;
+    const uploadMinsStr = uploadMins.toString().padStart(2, "0");
+    const uploadTimeStr = `${uploadH12}:${uploadMinsStr}${uploadSuffix}`;
+
+    let dateAbsolute = "";
+    if (displayOptions.includes("desc_show_date")) {
+      dateAbsolute = `${formatDateByPattern(uploadDate, dateFmt)} @ ${uploadTimeStr}`;
+    }
+    const dateRelative = displayOptions.includes("desc_relative_date")
+      ? this.relativeTime(uploadDate)
+      : "";
+    if (dateRelative) parts.push(dateRelative);
+    if (dateAbsolute) parts.push(dateAbsolute);
+    if (displayOptions.includes("show_id")) {
+      parts.push(gallery.id.toString());
+    }
+
+    const removeSpaces = getRemoveSeparatorSpacesSetting();
+    const separator = removeSpaces ? "|" : " | ";
+    const infoLine = parts.join(separator);
+    const topTags = this.getTopTags(gallery);
+    const tagsLine = topTags.length > 0 ? topTags.join(", ") : "";
+    for (const tag of topTags) excludedTags.add(tag);
+
+    const parodies = gallery.tags
+      .filter((t) => t.type === "parody")
+      .map((t) => t.name.replace(/_/g, " ").trim())
+      .filter((name) => name.length > 0);
+    const characters = gallery.tags
+      .filter((t) => t.type === "character")
+      .map((t) => t.name.replace(/_/g, " ").trim())
+      .filter((name) => name.length > 0);
+    const extraLines: string[] = [];
+
+    if (displayOptions.includes("parodies_bottom")) {
+      const nonOriginalParodies = parodies.filter(
+        (p) => p.toLowerCase() !== "original",
+      );
+      if (nonOriginalParodies.length > 0) {
+        extraLines.push(`Parodies: ${parodies.join(", ")}`);
+      }
+      if (characters.length > 0) {
+        extraLines.push(`Characters: ${characters.join(", ")}`);
+      }
+      for (const parody of parodies) excludedTags.add(parody.toLowerCase());
+      for (const character of characters) {
+        excludedTags.add(character.toLowerCase());
+      }
+    }
+
+    if (displayOptions.includes("show_artists_in_desc")) {
+      const artists = gallery.tags
+        .filter((t) => t.type === "artist")
+        .map((t) => t.name.replace(/_/g, " ").trim())
+        .filter((name) => name.length > 0);
+      const groups = gallery.tags
+        .filter((t) => t.type === "group")
+        .map((t) => t.name.replace(/_/g, " ").trim())
+        .filter((name) => name.length > 0);
+      if (artists.length > 0) {
+        extraLines.push(`Artists: ${artists.join(", ")}`);
+      }
+      if (groups.length > 0) {
+        extraLines.push(`Groups: ${groups.join(", ")}`);
+      }
+      for (const artist of artists) excludedTags.add(artist.toLowerCase());
+      for (const group of groups) excludedTags.add(group.toLowerCase());
+    }
+
+    let synopsis = infoLine;
+    if (tagsLine) synopsis += `\n${tagsLine}`;
+    if (extraLines.length > 0) synopsis += `\n${extraLines.join("\n")}`;
+
+    return { synopsis, excludedTags };
+  }
+
   private createSubtitle(
     gallery: Gallery,
     options?: {
@@ -4373,6 +4394,24 @@ export class NHentaiExtension implements NHentaiImplementation {
         title: "ID",
         tags: [{ id: `id_${gallery.id}`, title: gallery.id.toString() }],
       });
+    }
+
+    const artistSections = sections.filter(
+      (section) => section.id === "artists" || section.id === "groups",
+    );
+    if (artistSections.length > 0) {
+      const withoutArtists = sections.filter(
+        (section) => section.id !== "artists" && section.id !== "groups",
+      );
+      const idIndex = withoutArtists.findIndex(
+        (section) => section.id === "gallery_id",
+      );
+      if (idIndex >= 0) {
+        withoutArtists.splice(idIndex, 0, ...artistSections);
+      } else {
+        withoutArtists.push(...artistSections);
+      }
+      return withoutArtists;
     }
 
     return sections;
