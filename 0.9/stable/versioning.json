@@ -1,8 +1,8 @@
 {
-  "buildTime": "2026-06-26T03:16:08.885Z",
+  "buildTime": "2026-06-26T03:18:32.057Z",
   "builtWith": {
-    "toolchain": "1.0.0-alpha.89",
-    "types": "1.0.0-alpha.89"
+    "toolchain": "1.0.0-alpha.91",
+    "types": "1.0.0-alpha.91"
   },
   "repository": {
     "name": "kakarotextension",
@@ -293,7 +293,7 @@
     {
       "name": "NovelFire",
       "description": "Extension that pulls content from novelfire.net.",
-      "version": "1.0.0-alpha.3",
+      "version": "1.0.0-alpha.4",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
@@ -402,7 +402,7 @@
     {
       "name": "ReadComicsOnlineRu",
       "description": "Extension that pulls content from readcomicsonline.ru.",
-      "version": "1.0.0-alpha.3",
+      "version": "1.0.0",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
@@ -439,7 +439,7 @@
     {
       "name": "ScribbleHub",
       "description": "Extension that pulls content from scribblehub.com.",
-      "version": "1.0.0-alpha.3",
+      "version": "1.0.0-alpha.4",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
